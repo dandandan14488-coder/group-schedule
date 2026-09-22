@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="header-bar">
+        <h2>Расписание для группы: {{ group_name }}</h2>
+        <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+    </div>
+
+    {% if schedule %}
+        {% for day, lessons in schedule.items() %}
+            <h3 class="day-title">{{ day }}</h3>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Пара</th>
+                        <th>Время</th>
+                        <th>Дисциплина</th>
+                        <th>Преподаватель</th>
+                        <th>Аудитория</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lesson in lessons %}
+                    <tr>
+                        <td class="center">{{ lesson.lesson_number }}</td>
+                        <td class="center">{{ lesson.time_start }} - {{ lesson.time_end }}</td>
+                        <td>{{ lesson.subject }}</td>
+                        <td>{{ lesson.teacher }}</td>
+                        <td class="center">{{ lesson.room }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% else %}
+        <p>Для вашей группы расписание пока не добавлено.</p>
+    {% endif %}
+{% endblock %}
