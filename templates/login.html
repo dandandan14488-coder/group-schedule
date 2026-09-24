@@ -1,14 +1,56 @@
-{% extends 'base.html' %}
+
+{% extends "base.html" %}
+
+{% block title %}Кіру{% endblock %}
+
 {% block content %}
-    <h2>Вход в систему</h2>
-    <form method="POST">
-        <label>Логин:</label>
-        <input type="text" name="username" required>
 
-        <label>Пароль:</label>
-        <input type="password" name="password" required>
+<div class="auth-card">
 
-        <button type="submit">Войти</button>
+    <h1>Жүйеге кіру</h1>
+
+    <p class="muted">
+        БҚ 24-3 оқу тобының кестесі
+    </p>
+
+    <form method="post">
+
+        <label for="username">
+            Логин
+        </label>
+
+        <input
+            id="username"
+            name="username"
+            type="text"
+            required
+        >
+
+        <label for="password">
+            Пароль
+        </label>
+
+        <input
+            id="password"
+            name="password"
+            type="password"
+            required
+        >
+
+        <button type="submit">
+            Кіру
+        </button>
+
     </form>
-    <p>Нет аккаунта? <a href="{{ url_for('register') }}">Зарегистрироваться</a></p>
+
+    <p>
+        Аккаунтыңыз жоқ па?
+
+        <a href="{{ url_for('register') }}">
+            Тіркелу
+        </a>
+    </p>
+
+</div>
+
 {% endblock %}

@@ -1,99 +1,246 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+
+import os
 import sqlite3
 from functools import wraps
 
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for
+)
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DATABASE = os.path.join(BASE_DIR, "schedule.db")
+
 app = Flask(__name__)
-app.secret_key = 'super_secret_key'  # В реальном проекте используйте сложный случайный ключ
+
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "change-this-secret-key-in-production"
+)
+
+ALLOWED_GROUP = "БҚ 24-3"
 
 
 def get_db_connection():
-    conn = sqlite3.connect('schedule.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+    connection = sqlite3.connect(DATABASE)
+    connection.row_factory = sqlite3.Row
+    return connection
 
 
-# Декоратор для защиты страницы расписания
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
+def login_required(view_function):
+    @wraps(view_function)
+    def wrapped_view(*args, **kwargs):
+        if "user_id" not in session:
+            flash(
+                "Кестені көру үшін жүйеге кіріңіз.",
+                "warning"
+            )
+            return redirect(url_for("login"))
 
-    return decorated_function
+        return view_function(*args, **kwargs)
+
+    return wrapped_view
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    return redirect(url_for('schedule'))
+    if "user_id" in session:
+        return redirect(url_for("schedule"))
+
+    return redirect(url_for("login"))
 
 
-@app.route('/register', methods=['GET', 'POST'])
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        group_name = request.form['group_name']
+    if request.method == "POST":
+        username = request.form.get(
+            "username", ""
+        ).strip()
 
-        conn = get_db_connection()
-        try:
-            conn.execute('INSERT INTO users (username, password_hash, group_name) VALUES (?, ?, ?)',
-                         (username, generate_password_hash(password), group_name))
-            conn.commit()
-            return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('Пользователь с таким логином уже существует.')
-        finally:
-            conn.close()
-    return render_template('register.html')
+        password = request.form.get(
+            "password", ""
+        )
+
+        group_name = request.form.get(
+            "group_name",
+            ALLOWED_GROUP
+        ).strip()
+
+        if not username or not password:
+            flash(
+                "Логин мен парольді толтырыңыз.",
+                "danger"
+            )
+            return render_template("register.html")
+
+        if len(password) < 6:
+            flash(
+                "Пароль кемінде 6 таңбадан тұруы керек.",
+                "danger"
+            )
+            return render_template("register.html")
+
+        if group_name != ALLOWED_GROUP:
+            flash(
+                f"Бұл нұсқада тек {ALLOWED_GROUP} тобы қолданылады.",
+                "danger"
+            )
+            return render_template("register.html")
+
+        connection = get_db_connection()
+
+        existing_user = connection.execute(
+            "SELECT id FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+
+        if existing_user is not None:
+            connection.close()
+
+            flash(
+                "Бұл логин бұрын тіркелген.",
+                "danger"
+            )
+            return render_template("register.html")
+
+        password_hash = generate_password_hash(password)
+
+        connection.execute(
+            """
+            INSERT INTO users (
+                username,
+                password_hash,
+                group_name
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                username,
+                password_hash,
+                group_name
+            )
+        )
+
+        connection.commit()
+        connection.close()
+
+        flash(
+            "Тіркелу сәтті аяқталды. Енді жүйеге кіріңіз.",
+            "success"
+        )
+
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    if request.method == "POST":
+        username = request.form.get(
+            "username", ""
+        ).strip()
 
-        conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        conn.close()
+        password = request.form.get(
+            "password", ""
+        )
 
-        if user and check_password_hash(user['password_hash'], password):
-            session['user_id'] = user['id']
-            session['group_name'] = user['group_name']
-            return redirect(url_for('schedule'))
-        else:
-            flash('Неверный логин или пароль.')
-    return render_template('login.html')
+        connection = get_db_connection()
+
+        user = connection.execute(
+            "SELECT * FROM users WHERE username = ?",
+            (username,)
+        ).fetchone()
+
+        connection.close()
+
+        if (
+            user is None
+            or not check_password_hash(
+                user["password_hash"],
+                password
+            )
+        ):
+            flash(
+                "Логин немесе пароль қате.",
+                "danger"
+            )
+            return render_template("login.html")
+
+        session.clear()
+
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        session["group_name"] = user["group_name"]
+
+        return redirect(url_for("schedule"))
+
+    return render_template("login.html")
 
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+
+    flash(
+        "Жүйеден шықтыңыз.",
+        "success"
+    )
+
+    return redirect(url_for("login"))
 
 
-@app.route('/schedule')
+@app.route("/schedule")
 @login_required
 def schedule():
-    group_name = session.get('group_name')
-    conn = get_db_connection()
-    # Выборка расписания только для группы авторизованного пользователя
-    cur = conn.execute('SELECT * FROM schedule WHERE group_name = ? ORDER BY weekday, lesson_number', (group_name,))
-    schedule_data = cur.fetchall()
-    conn.close()
+    group_name = session["group_name"]
 
-    # Группировка расписания по дням недели
-    grouped_schedule = {}
-    for row in schedule_data:
-        day = row['weekday']
-        if day not in grouped_schedule:
-            grouped_schedule[day] = []
-        grouped_schedule[day].append(row)
+    connection = get_db_connection()
 
-    return render_template('schedule.html', schedule=grouped_schedule, group_name=group_name)
+    lessons = connection.execute(
+        """
+        SELECT
+            weekday,
+            lesson_number,
+            time_start,
+            time_end,
+            subject,
+            teacher,
+            room
+        FROM schedule
+        WHERE group_name = ?
+        ORDER BY
+            CASE weekday
+                WHEN 'Дүйсенбі' THEN 1
+                WHEN 'Сейсенбі' THEN 2
+                WHEN 'Сәрсенбі' THEN 3
+                WHEN 'Бейсенбі' THEN 4
+                WHEN 'Жұма' THEN 5
+                WHEN 'Сенбі' THEN 6
+                ELSE 7
+            END,
+            lesson_number
+        """,
+        (group_name,)
+    ).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "schedule.html",
+        lessons=lessons,
+        group_name=group_name
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)

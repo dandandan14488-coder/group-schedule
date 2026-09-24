@@ -1,17 +1,68 @@
-{% extends 'base.html' %}
+
+{% extends "base.html" %}
+
+{% block title %}Тіркелу{% endblock %}
+
 {% block content %}
-    <h2>Регистрация нового пользователя</h2>
-    <form method="POST">
-        <label>Логин:</label>
-        <input type="text" name="username" required>
 
-        <label>Пароль:</label>
-        <input type="password" name="password" required>
+<div class="auth-card">
 
-        <label>Учебная группа:</label>
-        <input type="text" name="group_name" placeholder="Например: ИС-21" required>
+    <h1>Жаңа аккаунт</h1>
 
-        <button type="submit">Зарегистрироваться</button>
+    <p class="muted">
+        БҚ 24-3 тобына тіркелу
+    </p>
+
+    <form method="post">
+
+        <label for="username">
+            Логин
+        </label>
+
+        <input
+            id="username"
+            name="username"
+            type="text"
+            required
+        >
+
+        <label for="password">
+            Пароль (кемінде 6 таңба)
+        </label>
+
+        <input
+            id="password"
+            name="password"
+            type="password"
+            minlength="6"
+            required
+        >
+
+        <label for="group_name">
+            Оқу тобы
+        </label>
+
+        <input
+            id="group_name"
+            name="group_name"
+            value="БҚ 24-3"
+            readonly
+        >
+
+        <button type="submit">
+            Тіркелу
+        </button>
+
     </form>
-    <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войти</a></p>
+
+    <p>
+        Аккаунтыңыз бар ма?
+
+        <a href="{{ url_for('login') }}">
+            Кіру
+        </a>
+    </p>
+
+</div>
+
 {% endblock %}

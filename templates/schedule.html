@@ -1,37 +1,110 @@
-{% extends 'base.html' %}
+
+{% extends "base.html" %}
+
+{% block title %}Сабақ кестесі{% endblock %}
+
 {% block content %}
-    <div class="header-bar">
-        <h2>Расписание для группы: {{ group_name }}</h2>
-        <a href="{{ url_for('logout') }}" class="btn-logout">Выйти</a>
+
+<div class="page-heading">
+    <div>
+        <h1>Сабақ кестесі</h1>
+
+        <p class="muted">
+            Оқу тобы:
+            <strong>{{ group_name }}</strong>
+        </p>
     </div>
 
-    {% if schedule %}
-        {% for day, lessons in schedule.items() %}
-            <h3 class="day-title">{{ day }}</h3>
-            <table class="schedule-table">
+    <a class="button secondary" href="{{ url_for('logout') }}">
+        Шығу
+    </a>
+</div>
+
+{% set weekdays = [
+    "Дүйсенбі",
+    "Сейсенбі",
+    "Сәрсенбі",
+    "Бейсенбі",
+    "Жұма"
+] %}
+
+{% for day in weekdays %}
+
+    <div class="day-section">
+
+        <h2 class="day-title">{{ day }}</h2>
+
+        <div class="table-wrapper">
+
+            <table>
+
                 <thead>
                     <tr>
-                        <th>Пара</th>
-                        <th>Время</th>
-                        <th>Дисциплина</th>
-                        <th>Преподаватель</th>
+                        <th>№</th>
+                        <th>Уақыты</th>
+                        <th>Пән</th>
+                        <th>Оқытушы</th>
                         <th>Аудитория</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    {% for lesson in lessons %}
-                    <tr>
-                        <td class="center">{{ lesson.lesson_number }}</td>
-                        <td class="center">{{ lesson.time_start }} - {{ lesson.time_end }}</td>
-                        <td>{{ lesson.subject }}</td>
-                        <td>{{ lesson.teacher }}</td>
-                        <td class="center">{{ lesson.room }}</td>
-                    </tr>
-                    {% endfor %}
+
+                    {% set day_lessons = lessons
+                        |selectattr("weekday", "equalto", day)
+                        |list
+                    %}
+
+                    {% if day_lessons %}
+
+                        {% for lesson in day_lessons %}
+
+                        <tr>
+                            <td>
+                                {{ lesson["lesson_number"] }}
+                            </td>
+
+                            <td>
+                                {{ lesson["time_start"] }}–{{ lesson["time_end"] }}
+                            </td>
+
+                            <td>
+                                {{ lesson["subject"] }}
+                            </td>
+
+                            <td>
+                                {{ lesson["teacher"] }}
+                            </td>
+
+                            <td>
+                                {{ lesson["room"] }}
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <tr>
+                            <td colspan="5">
+                                Бұл күні сабақ жоқ.
+                            </td>
+                        </tr>
+
+                    {% endif %}
+
                 </tbody>
+
             </table>
-        {% endfor %}
-    {% else %}
-        <p>Для вашей группы расписание пока не добавлено.</p>
-    {% endif %}
+
+        </div>
+
+    </div>
+
+{% endfor %}
+
+<p class="note">
+    Сабақ кестесі БҚ 24-3 оқу тобы үшін көрсетілген.
+</p>
+
 {% endblock %}
